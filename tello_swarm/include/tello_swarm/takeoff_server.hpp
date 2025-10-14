@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <future>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_srvs/srv/trigger.hpp"
@@ -24,15 +26,22 @@ private:
     // Service server to trigger swarm takeoff
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr takeoff_all_srv_;
 
+    // Persistent service clients for each drone
+    std::map<std::string, rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr> clients_;
+
+    void create_service_clients()
+
     void print_startup_summary();
 
-    // Handlers
     void handle_takeoff_all(
         const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
         std::shared_ptr<std_srvs::srv::Trigger::Response> response);
 
-    // Helper: call a single drone's takeoff service
-    bool call_single_drone_takeoff(const std::string &ns);
+    // Async service call helper
+    std::shared_future<std::shared_ptr<std_srvs::srv::Trigger::Response>>
+    call_single_drone_takeoff_async(
+        const std::string &id,
+        const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr &client);
 };
 
 } // namespace tello_swarm
