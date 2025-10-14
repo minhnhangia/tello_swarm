@@ -1,0 +1,9 @@
+takeoff_server:
+  ros__parameters:
+    # List of drone IDs that run mission_control under the same namespace
+    drone_ids: ["tello1", "tello2"]
+    # The service name provided by mission_control inside each namespace
+    takeoff_service_name: "takeoff"
+    # Timeout per individual drone service (seconds)
+    client_timeout_sec: 5.0
+
