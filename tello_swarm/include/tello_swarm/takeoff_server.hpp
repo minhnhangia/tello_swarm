@@ -29,7 +29,7 @@ private:
     // Persistent service clients for each drone
     std::map<std::string, rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr> clients_;
 
-    void create_service_clients()
+    void create_service_clients();
 
     void print_startup_summary();
 
