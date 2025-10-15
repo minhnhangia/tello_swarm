@@ -29,6 +29,9 @@ private:
     // Persistent service clients for each drone
     std::map<std::string, rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr> clients_;
 
+    // Reentrant callback group for parallel service handling
+    rclcpp::CallbackGroup::SharedPtr reentrant_callback_group_;
+
     void create_service_clients();
 
     void print_startup_summary();

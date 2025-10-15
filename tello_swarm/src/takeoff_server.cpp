@@ -4,6 +4,9 @@
 #include <sstream>
 #include <future>
 #include <vector>
+#include <thread>
+
+#include "rclcpp/executors/multi_threaded_executor.hpp"
 
 using namespace std::chrono_literals;
 
@@ -22,10 +25,18 @@ TakeoffServer::TakeoffServer() : rclcpp::Node("takeoff_server")
   this->get_parameter("takeoff_service_name", takeoff_service_name_);
   this->get_parameter("client_timeout_sec", client_timeout_sec_);
 
+  // Create a reentrant callback group for parallel service call handling
+  // This allows multiple simultaneous calls to /takeoff_all to be processed concurrently
+  reentrant_callback_group_ = this->create_callback_group(
+      rclcpp::CallbackGroupType::Reentrant);
+
   // Service server to trigger takeoff for all drones
+  // Use the reentrant callback group to allow parallel execution
   takeoff_all_srv_ = this->create_service<std_srvs::srv::Trigger>(
       "takeoff_all",
-      std::bind(&TakeoffServer::handle_takeoff_all, this, std::placeholders::_1, std::placeholders::_2));
+      std::bind(&TakeoffServer::handle_takeoff_all, this, std::placeholders::_1, std::placeholders::_2),
+      rclcpp::QoS(rclcpp::KeepLast(10)),
+      reentrant_callback_group_);
 
   create_service_clients();
 
@@ -34,9 +45,21 @@ TakeoffServer::TakeoffServer() : rclcpp::Node("takeoff_server")
 
 void TakeoffServer::create_service_clients()
 {
-  // Pre-create service clients for each drones
+  // Pre-create service clients for each drone
   for (const auto &id : drone_ids_)
   {
+    if (id.empty())
+    {
+      RCLCPP_WARN(this->get_logger(), "Skipping empty drone ID");
+      continue;
+    }
+
+    if (clients_.find(id) != clients_.end())
+    {
+      RCLCPP_WARN(this->get_logger(), "Duplicate drone ID detected: %s (ignoring duplicate)", id.c_str());
+      continue;
+    }
+
     std::string service = "/" + id + "/" + takeoff_service_name_;
     clients_[id] = this->create_client<std_srvs::srv::Trigger>(service);
   }
@@ -82,11 +105,23 @@ void TakeoffServer::handle_takeoff_all(
   {
     auto client_it = clients_.find(id);
     if (client_it == clients_.end())
+    {
+      RCLCPP_ERROR(this->get_logger(), "No service client found for drone [%s] - this should not happen!", id.c_str());
       continue;
+    }
 
     auto client = client_it->second;
     auto future = call_single_drone_takeoff_async(id, client);
     futures.emplace_back(id, std::move(future));
+  }
+
+  // Check if we have any futures to wait for
+  if (futures.empty())
+  {
+    response->success = false;
+    response->message = "No valid service clients available";
+    RCLCPP_ERROR(this->get_logger(), "No futures created - cannot proceed with takeoff");
+    return;
   }
 
   // Wait for all results (non-blocking wait per iteration)
@@ -107,6 +142,8 @@ void TakeoffServer::handle_takeoff_all(
         all_done = false;
       }
     }
+    
+    // Check timeout
     if ((this->now() - start) > timeout)
     {
       RCLCPP_ERROR(this->get_logger(), "Global timeout reached while waiting for all takeoff responses");
@@ -125,15 +162,23 @@ void TakeoffServer::handle_takeoff_all(
 
     if (fut.wait_for(0ms) == std::future_status::ready)
     {
-      auto resp = fut.get();
-      if (resp)
+      try
       {
-        ok = resp->success;
-        msg = resp->message;
+        auto resp = fut.get();
+        if (resp)
+        {
+          ok = resp->success;
+          msg = resp->message;
+        }
+        else
+        {
+          msg = "Null response";
+        }
       }
-      else
+      catch (const std::exception &e)
       {
-        msg = "Null response";
+        msg = std::string("Exception: ") + e.what();
+        RCLCPP_ERROR(this->get_logger(), "[%s] Exception while getting future result: %s", id.c_str(), e.what());
       }
     }
     else
@@ -169,6 +214,7 @@ TakeoffServer::call_single_drone_takeoff_async(const std::string &id,
   rclcpp::Duration timeout = rclcpp::Duration::from_seconds(client_timeout_sec_);
 
   // Wait for service to be available (but allow multiple simultaneous waits)
+  bool service_available = false;
   while (!client->wait_for_service(200ms))
   {
     if (!rclcpp::ok())
@@ -183,6 +229,18 @@ TakeoffServer::call_single_drone_takeoff_async(const std::string &id,
     }
   }
 
+  // Check if service is now available
+  service_available = client->service_is_ready();
+
+  if (!service_available)
+  {
+    RCLCPP_WARN(this->get_logger(), "Service %s not available, returning invalid future", service.c_str());
+    // Return an immediately-ready future with nullptr to indicate failure
+    std::promise<std::shared_ptr<std_srvs::srv::Trigger::Response>> promise;
+    promise.set_value(nullptr);
+    return promise.get_future().share();
+  }
+
   auto request = std::make_shared<std_srvs::srv::Trigger::Request>();
   auto future = client->async_send_request(request);
   return future.future.share();
@@ -193,7 +251,24 @@ TakeoffServer::call_single_drone_takeoff_async(const std::string &id,
 int main(int argc, char *argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<tello_swarm::TakeoffServer>());
+
+  // Create the takeoff server node
+  auto node = std::make_shared<tello_swarm::TakeoffServer>();
+
+  // Use MultiThreadedExecutor to handle multiple concurrent service calls
+  // This ensures we can handle multiple /takeoff_all calls simultaneously
+  // and process responses from all drones in parallel
+  rclcpp::executors::MultiThreadedExecutor executor(
+      rclcpp::ExecutorOptions(),
+      /* num_threads = */ 0,  // 0 = hardware_concurrency (optimal for system)
+      /* yield_before_execute = */ false,
+      /* timeout = */ std::chrono::milliseconds(100));
+
+  executor.add_node(node);
+
+  RCLCPP_INFO(node->get_logger(), "Starting MultiThreadedExecutor for TakeoffServer");
+  executor.spin();
+
   rclcpp::shutdown();
   return 0;
 }
