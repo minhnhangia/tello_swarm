@@ -1,0 +1,5 @@
+int32 marker_id
+string drone_id
+---
+bool success
+string message

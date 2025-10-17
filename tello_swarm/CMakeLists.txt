@@ -9,6 +9,8 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(swarm_interfaces REQUIRED)
 
 
 if(BUILD_TESTING)
@@ -37,18 +39,29 @@ install(DIRECTORY
 
 # Add node takeoff_server
 add_executable(takeoff_server src/takeoff_server.cpp)
-
-target_include_directories(takeoff_server PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-
 ament_target_dependencies(
   takeoff_server
   rclcpp
   std_srvs
 )
+target_include_directories(takeoff_server PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
 
-install(TARGETS takeoff_server
+add_executable(marker_manager src/marker_manager.cpp)
+ament_target_dependencies(
+  marker_manager
+  rclcpp
+  std_msgs
+  swarm_interfaces
+)
+target_include_directories(marker_manager PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+install(TARGETS 
+  takeoff_server
+  marker_manager
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
