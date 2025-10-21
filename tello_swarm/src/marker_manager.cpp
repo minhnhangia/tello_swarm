@@ -13,7 +13,7 @@ MarkerManager::MarkerManager()
     populate_marker_registry();
 
     // Publisher for unavailable markers (transient local so late subscribers get last state)
-    auto qos = rclcpp::QoS(rclcpp::KeepLast(1));
+    auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
     qos.reliable();
     qos.transient_local();
     unavailable_markers_pub_ = this->create_publisher<std_msgs::msg::Int32MultiArray>(
@@ -24,6 +24,10 @@ MarkerManager::MarkerManager()
         "reserve_marker",
         std::bind(&MarkerManager::handle_reserve_marker, this, std::placeholders::_1, std::placeholders::_2));
 
+    unreserve_marker_srv_ = this->create_service<swarm_interfaces::srv::ReserveMarker>(
+        "unreserve_marker",
+        std::bind(&MarkerManager::handle_unreserve_marker, this, std::placeholders::_1, std::placeholders::_2));
+
     mark_landed_srv_ = this->create_service<swarm_interfaces::srv::MarkLanded>(
         "mark_landed",
         std::bind(&MarkerManager::handle_mark_landed, this, std::placeholders::_1, std::placeholders::_2));
@@ -32,7 +36,7 @@ MarkerManager::MarkerManager()
     publish_timer_ = this->create_wall_timer(
         1s, std::bind(&MarkerManager::publish_unavailable_markers, this));
 
-    RCLCPP_INFO(this->get_logger(), "Marker manager started.");
+    RCLCPP_INFO(this->get_logger(), "Marker Manager started.");
 }
 
 void MarkerManager::populate_marker_registry()
@@ -58,11 +62,7 @@ void MarkerManager::handle_reserve_marker(
     const std::string &drone_id = request->drone_id;
     cleanup_expired_markers();
 
-    // Find the marker in the registry
-    auto it = std::find_if(marker_registry_.begin(), marker_registry_.end(),
-                            [marker_id](const Marker &m)
-                            { return static_cast<int>(m.marker_id) == marker_id; });
-    // Marker not found
+    auto it = find_marker(marker_id);
     if (it == marker_registry_.end())
     {
         response->success = false;
@@ -85,12 +85,12 @@ void MarkerManager::handle_reserve_marker(
     }
 
     // Renewal by the same drone
-    if (it->owner == drone_id)
+    if (it->owner == drone_id && it->state == Marker::RESERVED)
     {
         it->last_update = std::chrono::steady_clock::now();
         response->success = true;
         response->message = "Reservation renewed.";
-        RCLCPP_INFO(this->get_logger(), "[%s] renewed marker %d.", drone_id.c_str(), marker_id);
+        // RCLCPP_INFO(this->get_logger(), "[%s] renewed marker %d.", drone_id.c_str(), marker_id);
         return;
     }
 
@@ -102,6 +102,47 @@ void MarkerManager::handle_reserve_marker(
                 drone_id.c_str(), marker_id, it->owner.c_str());
 }
 
+void MarkerManager::handle_unreserve_marker(
+    const std::shared_ptr<swarm_interfaces::srv::ReserveMarker::Request> request,
+    std::shared_ptr<swarm_interfaces::srv::ReserveMarker::Response> response)
+{
+    const int marker_id = request->marker_id;
+    const std::string &drone_id = request->drone_id;
+    cleanup_expired_markers();
+
+    auto it = find_marker(marker_id);
+    if (it == marker_registry_.end())
+    {
+        response->success = false;
+        response->message = "Unknown marker id.";
+        RCLCPP_WARN(this->get_logger(), "[%s] tried to unreserve unknown marker %d.", drone_id.c_str(), marker_id);
+        return;
+    }
+
+    // Only the owner drone can unreserve
+    if (it->owner != drone_id)
+    {
+        response->success = false;
+        response->message = "Marker owned by another drone: " + it->owner;
+        RCLCPP_WARN(this->get_logger(),
+                    "[%s] attempted to unreserve marker %d owned by %s.",
+                    drone_id.c_str(), marker_id, it->owner.c_str());
+        return;
+    }
+
+    // Unreserve the marker
+    it->state = Marker::FREE;
+    it->owner.clear();
+    it->last_update = std::chrono::steady_clock::now();
+    response->success = true;
+    response->message = "Marker unreserved successfully.";
+    RCLCPP_INFO(this->get_logger(),
+                "[%s] unreserved marker %d.",
+                drone_id.c_str(), marker_id);
+
+    publish_unavailable_markers_on_update();
+}
+
 void MarkerManager::handle_mark_landed(
     const std::shared_ptr<swarm_interfaces::srv::MarkLanded::Request> request,
     std::shared_ptr<swarm_interfaces::srv::MarkLanded::Response> response)
@@ -109,10 +150,7 @@ void MarkerManager::handle_mark_landed(
     const int marker_id = request->marker_id;
     const std::string &drone_id = request->drone_id;
 
-    // Find the marker in the registry
-    auto it = std::find_if(marker_registry_.begin(), marker_registry_.end(),
-                            [marker_id](const Marker &m)
-                            { return static_cast<int>(m.marker_id) == marker_id; });
+    auto it = find_marker(marker_id);
     if (it == marker_registry_.end())
     {
         response->success = false;
@@ -194,6 +232,16 @@ void MarkerManager::publish_unavailable_markers()
 void MarkerManager::publish_unavailable_markers_on_update()
 {
     publish_unavailable_markers();
+}
+
+std::vector<Marker>::iterator MarkerManager::find_marker(int marker_id)
+{
+    // Find the marker in the registry
+    auto it = std::find_if(marker_registry_.begin(), marker_registry_.end(),
+                            [marker_id](const Marker &m)
+                            { return static_cast<int>(m.marker_id) == marker_id; });
+
+    return it;
 }
 
 } // namespace tello_swarm

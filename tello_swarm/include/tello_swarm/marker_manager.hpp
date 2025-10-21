@@ -34,12 +34,13 @@ private:
 
     // === Service servers ===
     rclcpp::Service<swarm_interfaces::srv::ReserveMarker>::SharedPtr reserve_marker_srv_;
+    rclcpp::Service<swarm_interfaces::srv::ReserveMarker>::SharedPtr unreserve_marker_srv_;
     rclcpp::Service<swarm_interfaces::srv::MarkLanded>::SharedPtr mark_landed_srv_;
 
     // === Marker state ===
     // Pre-populated list of known markers and their state
     std::vector<Marker> marker_registry_;
-    std::chrono::seconds cooldown_duration_{10};
+    std::chrono::seconds cooldown_duration_{10};    // Duration after which a RESERVED marker becomes FREE if not updated
 
     // === Timer ===
     rclcpp::TimerBase::SharedPtr publish_timer_;
@@ -51,6 +52,10 @@ private:
         const std::shared_ptr<swarm_interfaces::srv::ReserveMarker::Request> request,
         std::shared_ptr<swarm_interfaces::srv::ReserveMarker::Response> response);
 
+    void handle_unreserve_marker(
+        const std::shared_ptr<swarm_interfaces::srv::ReserveMarker::Request> request,
+        std::shared_ptr<swarm_interfaces::srv::ReserveMarker::Response> response);
+
     void handle_mark_landed(
         const std::shared_ptr<swarm_interfaces::srv::MarkLanded::Request> request,
         std::shared_ptr<swarm_interfaces::srv::MarkLanded::Response> response);
@@ -58,6 +63,7 @@ private:
     void publish_unavailable_markers();
     void publish_unavailable_markers_on_update();
     void cleanup_expired_markers();
+    std::vector<Marker>::iterator find_marker(int marker_id);
 };
 
 } // namespace tello_swarm
