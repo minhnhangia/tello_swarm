@@ -40,7 +40,7 @@ private:
     // === Marker state ===
     // Pre-populated list of known markers and their state
     std::vector<Marker> marker_registry_;
-    std::chrono::seconds cooldown_duration_{10};    // Duration after which a RESERVED marker becomes FREE if not updated
+    std::chrono::seconds cooldown_duration_{6};    // Duration after which a RESERVED marker becomes FREE if not updated
 
     // === Timer ===
     rclcpp::TimerBase::SharedPtr publish_timer_;

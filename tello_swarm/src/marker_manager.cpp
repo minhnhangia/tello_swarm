@@ -34,7 +34,7 @@ MarkerManager::MarkerManager()
 
     // Periodically publish unavailable markers
     publish_timer_ = this->create_wall_timer(
-        1s, std::bind(&MarkerManager::publish_unavailable_markers, this));
+        500ms, std::bind(&MarkerManager::publish_unavailable_markers, this));
 
     RCLCPP_INFO(this->get_logger(), "Marker Manager started.");
 }
@@ -120,7 +120,7 @@ void MarkerManager::handle_unreserve_marker(
     }
 
     // Only the owner drone can unreserve
-    if (it->owner != drone_id)
+    if (it->owner != drone_id && it->state == Marker::RESERVED)
     {
         response->success = false;
         response->message = "Marker owned by another drone: " + it->owner;
