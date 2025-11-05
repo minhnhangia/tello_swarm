@@ -41,16 +41,31 @@ MarkerManager::MarkerManager()
 
 void MarkerManager::populate_marker_registry()
 {
-    // Initialize known markers [1..20] as FREE with default type (VICTIM)
-    marker_registry_.reserve(20);
-    for (uint32_t id = 1; id <= 20; ++id)
+    marker_registry_.clear();
+    marker_registry_.reserve(15);
+
+    const auto now = std::chrono::steady_clock::now();
+
+    // Markers 1–8 → VICTIM
+    for (uint32_t id = 1; id <= 8; ++id)
     {
         marker_registry_.push_back(Marker{
             id,
             Marker::FREE,
             Marker::VICTIM,
             "",
-            std::chrono::steady_clock::now()});
+            now});
+    }
+
+    // Markers 9–14 → FIRE
+    for (uint32_t id = 9; id <= 14; ++id)
+    {
+        marker_registry_.push_back(Marker{
+            id,
+            Marker::FREE,
+            Marker::FIRE,
+            "",
+            now});
     }
 }
 
