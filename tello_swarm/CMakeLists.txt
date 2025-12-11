@@ -48,6 +48,17 @@ target_include_directories(takeoff_server PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+# Add node landing_server
+add_executable(landing_server src/landing_server.cpp)
+ament_target_dependencies(
+  landing_server
+  rclcpp
+  std_srvs
+)
+target_include_directories(landing_server PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
 add_executable(marker_manager src/marker_manager.cpp)
 ament_target_dependencies(
   marker_manager
@@ -61,6 +72,7 @@ target_include_directories(marker_manager PUBLIC
 
 install(TARGETS 
   takeoff_server
+  landing_server
   marker_manager
   DESTINATION lib/${PROJECT_NAME})
 
