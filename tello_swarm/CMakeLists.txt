@@ -37,8 +37,20 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
+# Add shared base library for swarm servers
+add_library(swarm_trigger_base src/swarm_trigger_base.cpp)
+ament_target_dependencies(
+  swarm_trigger_base
+  rclcpp
+  std_srvs
+)
+target_include_directories(swarm_trigger_base PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
 # Add node takeoff_server
 add_executable(takeoff_server src/takeoff_server.cpp)
+target_link_libraries(takeoff_server swarm_trigger_base)
 ament_target_dependencies(
   takeoff_server
   rclcpp
@@ -50,6 +62,7 @@ target_include_directories(takeoff_server PUBLIC
 
 # Add node landing_server
 add_executable(landing_server src/landing_server.cpp)
+target_link_libraries(landing_server swarm_trigger_base)
 ament_target_dependencies(
   landing_server
   rclcpp
