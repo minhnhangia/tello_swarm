@@ -1,0 +1,9 @@
+# Request
+string drone_id
+int32 waypoint_id
+string failure_reason             # e.g., "lost_marker", "collision_detected", "timeout"
+---
+# Response
+bool success
+string next_turn_holder
+string message

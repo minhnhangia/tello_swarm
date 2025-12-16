@@ -13,6 +13,9 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ReserveMarker.srv"
   "srv/MarkLanded.srv"
+  "srv/QueryTurn.srv"
+  "srv/SignalComplete.srv"
+  "srv/ReportFailure.srv"
 )
 
 ament_export_dependencies(rosidl_default_runtime)

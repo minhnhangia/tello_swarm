@@ -1,0 +1,9 @@
+# Request
+string drone_id
+int32 waypoint_id
+---
+# Response
+bool success
+string next_turn_holder           # which drone gets the turn next
+int32 remaining_drones            # how many drones left in queue
+string message

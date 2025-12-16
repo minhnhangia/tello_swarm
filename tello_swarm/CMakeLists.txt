@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(swarm_interfaces REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 
 if(BUILD_TESTING)
@@ -83,10 +84,23 @@ target_include_directories(marker_manager PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+add_executable(waypoint_server src/waypoint_server.cpp)
+target_link_libraries(waypoint_server yaml-cpp)
+ament_target_dependencies(
+  waypoint_server
+  rclcpp
+  std_msgs
+  swarm_interfaces
+)
+target_include_directories(waypoint_server PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
 install(TARGETS 
   takeoff_server
   landing_server
   marker_manager
+  waypoint_server
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
