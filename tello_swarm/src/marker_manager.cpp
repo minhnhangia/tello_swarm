@@ -19,6 +19,10 @@ MarkerManager::MarkerManager()
     unavailable_markers_pub_ = this->create_publisher<std_msgs::msg::Int32MultiArray>(
         "unavailable_markers", qos);
 
+    // Publisher for full marker registry visualization
+    marker_registry_pub_ = this->create_publisher<swarm_interfaces::msg::MarkerRegistry>(
+        "marker_registry", 1);
+
     // Create service servers
     reserve_marker_srv_ = this->create_service<swarm_interfaces::srv::ReserveMarker>(
         "reserve_marker",
@@ -32,9 +36,9 @@ MarkerManager::MarkerManager()
         "mark_landed",
         std::bind(&MarkerManager::handle_mark_landed, this, std::placeholders::_1, std::placeholders::_2));
 
-    // Periodically publish unavailable markers
+    // Periodically publish unavailable markers and full registry
     publish_timer_ = this->create_wall_timer(
-        500ms, std::bind(&MarkerManager::publish_unavailable_markers, this));
+        500ms, std::bind(&MarkerManager::timer_callback_, this));
 
     RCLCPP_INFO(this->get_logger(), "Marker Manager started.");
 }
@@ -227,6 +231,12 @@ void MarkerManager::cleanup_expired_markers()
     }
 }
 
+void MarkerManager::timer_callback_()
+{
+    publish_unavailable_markers();
+    publish_marker_registry();
+}
+
 void MarkerManager::publish_unavailable_markers()
 {
     cleanup_expired_markers();
@@ -247,6 +257,37 @@ void MarkerManager::publish_unavailable_markers()
 void MarkerManager::publish_unavailable_markers_on_update()
 {
     publish_unavailable_markers();
+}
+
+void MarkerManager::publish_marker_registry()
+{
+    swarm_interfaces::msg::MarkerRegistry registry_msg;
+    registry_msg.header.stamp = this->get_clock()->now();
+    registry_msg.header.frame_id = "marker_registry";
+
+    const auto now = std::chrono::steady_clock::now();
+
+    for (const auto &m : marker_registry_)
+    {
+        swarm_interfaces::msg::MarkerInfo marker_info;
+        marker_info.marker_id = m.marker_id;
+        
+        // Convert enum state to uint8
+        marker_info.state = static_cast<uint8_t>(m.state);
+        
+        // Convert enum type to uint8
+        marker_info.type = static_cast<uint8_t>(m.type);
+        
+        marker_info.owner = m.owner;
+        
+        // Calculate time since last update in seconds
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - m.last_update);
+        marker_info.time_since_update = duration.count() / 1000.0;
+        
+        registry_msg.markers.push_back(marker_info);
+    }
+
+    marker_registry_pub_->publish(registry_msg);
 }
 
 std::vector<Marker>::iterator MarkerManager::find_marker(int marker_id)

@@ -8,14 +8,18 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(std_msgs REQUIRED)
 
 # Add here your custom message (.msg), service (.srv), and action (.action) files
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/MarkerInfo.msg"
+  "msg/MarkerRegistry.msg"
   "srv/ReserveMarker.srv"
   "srv/MarkLanded.srv"
   "srv/QueryTurn.srv"
   "srv/SignalComplete.srv"
   "srv/ReportFailure.srv"
+  DEPENDENCIES std_msgs
 )
 
 ament_export_dependencies(rosidl_default_runtime)
