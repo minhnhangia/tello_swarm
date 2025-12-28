@@ -3,6 +3,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/int32_multi_array.hpp"
+#include "swarm_interfaces/msg/marker_heartbeat.hpp"
 #include "swarm_interfaces/msg/marker_registry.hpp"
 #include "swarm_interfaces/srv/reserve_marker.hpp"
 #include "swarm_interfaces/srv/mark_landed.hpp"
@@ -34,6 +35,9 @@ private:
     rclcpp::Publisher<std_msgs::msg::Int32MultiArray>::SharedPtr unavailable_markers_pub_;
     rclcpp::Publisher<swarm_interfaces::msg::MarkerRegistry>::SharedPtr marker_registry_pub_;
 
+    // === Subscribers ===
+    rclcpp::Subscription<swarm_interfaces::msg::MarkerHeartbeat>::SharedPtr marker_heartbeat_sub_;
+
     // === Service servers ===
     rclcpp::Service<swarm_interfaces::srv::ReserveMarker>::SharedPtr reserve_marker_srv_;
     rclcpp::Service<swarm_interfaces::srv::ReserveMarker>::SharedPtr unreserve_marker_srv_;
@@ -61,6 +65,9 @@ private:
     void handle_mark_landed(
         const std::shared_ptr<swarm_interfaces::srv::MarkLanded::Request> request,
         std::shared_ptr<swarm_interfaces::srv::MarkLanded::Response> response);
+
+    void handle_marker_heartbeat(
+        const swarm_interfaces::msg::MarkerHeartbeat::SharedPtr msg);
 
     void timer_callback_();
     void publish_unavailable_markers();

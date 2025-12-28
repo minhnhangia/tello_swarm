@@ -23,6 +23,12 @@ MarkerManager::MarkerManager()
     marker_registry_pub_ = this->create_publisher<swarm_interfaces::msg::MarkerRegistry>(
         "marker_registry", 1);
 
+    // Subscribe to marker heartbeats from drones (for reservation renewal)
+    marker_heartbeat_sub_ = this->create_subscription<swarm_interfaces::msg::MarkerHeartbeat>(
+        "/marker_heartbeat",
+        rclcpp::QoS(10).reliable(),
+        std::bind(&MarkerManager::handle_marker_heartbeat, this, std::placeholders::_1));
+
     // Create service servers
     reserve_marker_srv_ = this->create_service<swarm_interfaces::srv::ReserveMarker>(
         "reserve_marker",
@@ -212,6 +218,29 @@ void MarkerManager::handle_mark_landed(
                 drone_id.c_str(), marker_id);
 
     publish_unavailable_markers_on_update();
+}
+
+void MarkerManager::handle_marker_heartbeat(
+    const swarm_interfaces::msg::MarkerHeartbeat::SharedPtr msg)
+{
+    const int marker_id = msg->marker_id;
+    const std::string &drone_id = msg->drone_id;
+
+    auto it = find_marker(marker_id);
+    if (it == marker_registry_.end())
+    {
+        // Silently ignore unknown markers (high-frequency event)
+        return;
+    }
+
+    // Only renew if this drone owns the marker and it's in RESERVED state
+    if (it->owner == drone_id && it->state == Marker::RESERVED)
+    {
+        it->last_update = std::chrono::steady_clock::now();
+        RCLCPP_DEBUG(this->get_logger(),
+                     "[%s] heartbeat renewed marker %d.",
+                     drone_id.c_str(), marker_id);
+    }
 }
 
 void MarkerManager::cleanup_expired_markers()

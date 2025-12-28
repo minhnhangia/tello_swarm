@@ -12,6 +12,7 @@ find_package(std_msgs REQUIRED)
 
 # Add here your custom message (.msg), service (.srv), and action (.action) files
 rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/MarkerHeartbeat.msg"
   "msg/MarkerInfo.msg"
   "msg/MarkerRegistry.msg"
   "srv/ReserveMarker.srv"
