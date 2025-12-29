@@ -1,50 +1,21 @@
 #ifndef TELLO_SWARM__LANDING_SERVER__HPP_
 #define TELLO_SWARM__LANDING_SERVER__HPP_
 
-#include <string>
-#include <vector>
-#include <map>
-#include <future>
-
-#include "rclcpp/rclcpp.hpp"
-#include "std_srvs/srv/trigger.hpp"
+#include "tello_swarm/swarm_trigger_base.hpp"
 
 namespace tello_swarm
 {
 
-class LandingServer : public rclcpp::Node
+/**
+ * @brief Landing server for coordinating swarm landing operations
+ * 
+ * Thin wrapper around SwarmTriggerBase that provides landing-specific
+ * configuration. Exposes /land_all service that triggers /land on all drones.
+ */
+class LandingServer : public SwarmTriggerBase
 {
 public:
     LandingServer();
-
-private:
-    // Parameters
-    std::vector<std::string> drone_ids_;
-    std::string landing_service_name_;
-    double client_timeout_sec_;
-
-    // Service server to trigger swarm landing
-    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr land_all_srv_;
-
-    // Persistent service clients for each drone
-    std::map<std::string, rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr> clients_;
-
-    // Reentrant callback group for parallel service handling
-    rclcpp::CallbackGroup::SharedPtr reentrant_callback_group_;
-
-    void create_service_clients();
-
-    void print_startup_summary();
-
-    void handle_land_all(
-        const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-        std::shared_ptr<std_srvs::srv::Trigger::Response> response);
-
-    // Async service call helper
-    std::shared_future<std::shared_ptr<std_srvs::srv::Trigger::Response>>
-    call_single_drone_landing_async(
-        const std::string &id,
-        const rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr &client);
 };
 
 } // namespace tello_swarm

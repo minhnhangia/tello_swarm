@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(swarm_interfaces REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 
 if(BUILD_TESTING)
@@ -37,8 +38,20 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
+# Add shared base library for swarm servers
+add_library(swarm_trigger_base src/swarm_trigger_base.cpp)
+ament_target_dependencies(
+  swarm_trigger_base
+  rclcpp
+  std_srvs
+)
+target_include_directories(swarm_trigger_base PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
 # Add node takeoff_server
 add_executable(takeoff_server src/takeoff_server.cpp)
+target_link_libraries(takeoff_server swarm_trigger_base)
 ament_target_dependencies(
   takeoff_server
   rclcpp
@@ -50,6 +63,7 @@ target_include_directories(takeoff_server PUBLIC
 
 # Add node landing_server
 add_executable(landing_server src/landing_server.cpp)
+target_link_libraries(landing_server swarm_trigger_base)
 ament_target_dependencies(
   landing_server
   rclcpp
@@ -70,10 +84,23 @@ target_include_directories(marker_manager PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+add_executable(waypoint_server src/waypoint_server.cpp)
+target_link_libraries(waypoint_server yaml-cpp)
+ament_target_dependencies(
+  waypoint_server
+  rclcpp
+  std_msgs
+  swarm_interfaces
+)
+target_include_directories(waypoint_server PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
 install(TARGETS 
   takeoff_server
   landing_server
   marker_manager
+  waypoint_server
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

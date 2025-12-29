@@ -1,0 +1,11 @@
+# Request
+string drone_id
+int32 waypoint_id
+---
+# Response
+bool is_my_turn                   # can this drone proceed?
+string current_turn_holder        # which drone currently has the turn
+int32 queue_position              # this drone's position in queue (0-indexed)
+bool already_completed            # did this drone already complete this waypoint?
+float32 time_remaining            # seconds until timeout (if not your turn)
+string message
