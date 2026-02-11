@@ -1,0 +1,16 @@
+# Service for reserving/unreserving a waypoint in multi-drone coordination
+# Used by drones to request exclusive access to a waypoint
+
+# Waypoint sequence index (0-based)
+int32 waypoint_index
+
+# Drone identifier
+string drone_id
+
+---
+
+# True if reservation successful, false if waypoint already reserved
+bool success
+
+# Human-readable status message
+string message

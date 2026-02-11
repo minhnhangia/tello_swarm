@@ -15,11 +15,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MarkerHeartbeat.msg"
   "msg/MarkerInfo.msg"
   "msg/MarkerRegistry.msg"
+  "msg/WaypointHeartbeat.msg"
   "srv/ReserveMarker.srv"
   "srv/MarkLanded.srv"
-  "srv/QueryTurn.srv"
-  "srv/SignalComplete.srv"
-  "srv/ReportFailure.srv"
+  "srv/ReserveWaypoint.srv"
   DEPENDENCIES std_msgs
 )
 
