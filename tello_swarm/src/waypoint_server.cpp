@@ -12,7 +12,7 @@ WaypointServer::WaypointServer()
 {
     // Declare parameters
     this->declare_parameter("max_waypoints", 100);
-    this->declare_parameter("expiration_duration_s", 8.0);
+    this->declare_parameter("expiration_duration_s", 10.0);
 
     // Load parameters
     uint32_t max_waypoints = this->get_parameter("max_waypoints").as_int();
