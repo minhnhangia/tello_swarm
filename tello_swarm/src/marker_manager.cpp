@@ -56,8 +56,8 @@ void MarkerManager::populate_marker_registry()
 
     const auto now = std::chrono::steady_clock::now();
 
-    // Markers 1–8 → VICTIM
-    for (uint32_t id = 1; id <= 8; ++id)
+    // Markers 1–4 → VICTIM
+    for (uint32_t id = 1; id <= 4; ++id)
     {
         marker_registry_.push_back(Marker{
             id,
@@ -67,8 +67,19 @@ void MarkerManager::populate_marker_registry()
             now});
     }
 
-    // Markers 9–14 → FIRE
-    for (uint32_t id = 9; id <= 14; ++id)
+    // Markers 21–24 → VICTIM
+    for (uint32_t id = 21; id <= 24; ++id)
+    {
+        marker_registry_.push_back(Marker{
+            id,
+            Marker::FREE,
+            Marker::VICTIM,
+            "",
+            now});
+    }
+
+    // Markers 11–14 → FIRE
+    for (uint32_t id = 11; id <= 14; ++id)
     {
         marker_registry_.push_back(Marker{
             id,
