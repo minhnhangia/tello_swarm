@@ -73,6 +73,19 @@ target_include_directories(landing_server PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+# Add node motoron_server
+add_executable(motoron_server src/motoron_server.cpp)
+target_link_libraries(motoron_server swarm_trigger_base)
+ament_target_dependencies(
+  motoron_server
+  rclcpp
+  std_srvs
+)
+target_include_directories(motoron_server PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+# Add node marker_manager
 add_executable(marker_manager src/marker_manager.cpp)
 ament_target_dependencies(
   marker_manager
@@ -84,6 +97,7 @@ target_include_directories(marker_manager PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
+# Add node waypoint_server
 add_executable(waypoint_server src/waypoint_server.cpp)
 target_link_libraries(waypoint_server yaml-cpp)
 ament_target_dependencies(
@@ -99,6 +113,7 @@ target_include_directories(waypoint_server PUBLIC
 install(TARGETS 
   takeoff_server
   landing_server
+  motoron_server
   marker_manager
   waypoint_server
   DESTINATION lib/${PROJECT_NAME})
